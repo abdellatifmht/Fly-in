@@ -34,7 +34,7 @@ class Zone:
     def has_capacity(self) -> bool:
         """Check if the zone has capacity for more drones."""
         if self.is_start or self.is_end:
-            return True  # Start and end zones can always accommodate drones
+            return True
         return self.current_drones < self.max_drones
 
     def movement_cost(self) -> int:

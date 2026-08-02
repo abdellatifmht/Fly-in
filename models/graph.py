@@ -9,7 +9,7 @@ class Graph:
         self.adjacency: dict[str, list[Connection]] = {}
         self.start: Optional[Zone] = None
         self.end: Optional[Zone] = None
-        self.nb_zones: int = 0
+        self.nb_drones: int = 0
 
     def add_zone(self, zone: Zone) -> None:
         """Add a zone to the graph."""
@@ -19,7 +19,6 @@ class Graph:
             self.start = zone
         if zone.is_end:
             self.end = zone
-        self.nb_zones += 1
 
     def add_connection(self, connection: Connection) -> None:
         """Register a bidirectional connection."""
