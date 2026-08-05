@@ -61,9 +61,9 @@ class MapParser:
         """Parse the number of drones."""
         match = re.match(r"nb_drones:\s*(\d+)$", line)
         if not match:
-            raise ParserError(f"Line {line_number}: Invalid nb_drones format. Expected 'nb_drones: <number>'")
+            raise ParserError(f"Line {line_number}: {line} is not a valid nb_drones declaration. Expected format: 'nb_drones: <number>'.")
         if int(match.group(1)) < 1:
-            raise ParserError(f"Line {line_number}: Number of drones must be at least 1.")
+            raise ParserError(f"Line {line_number}: {line} is not a valid nb_drones declaration. Number of drones must be a positive integer.")
         graph.nb_drones = int(match.group(1))
 
     def _parse_zone(
