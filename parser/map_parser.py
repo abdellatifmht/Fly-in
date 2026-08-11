@@ -22,10 +22,18 @@ class MapParser:
         except OSError as e:
             raise ParserError(f"Error reading file: {e}")
 
+        first_instruction_found = False
+
         for index, line in enumerate(lines, start=1):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
+
+            if not first_instruction_found:
+                if line.startswith("nb_drones"):
+                    first_instruction_found = True
+                else:
+                    raise ParserError(f"Line {index}: The first instruction must be 'nb_drones'.")
             try:
                 self._parse_line(line, index, graph, seen_connections)
             except ParserError as e:
@@ -44,6 +52,7 @@ class MapParser:
             seen_connections: set[frozenset[str]]
             ) -> None:
         """Parse a single line and update the graph."""
+
         if line.startswith("nb_drones"):
             self._parse_nb_drones(line, line_number, graph)
         elif line.startswith("start_hub"):
