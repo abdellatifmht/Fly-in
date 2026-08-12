@@ -4,7 +4,7 @@ from enum import Enum
 from models.zone import Zone
 
 
-class DroneState(Enum, str):
+class DroneState(str, Enum):
     """Enum representing the state of a drone."""
     IDLE = "idle"
     MOVING = "moving"
