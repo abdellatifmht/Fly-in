@@ -11,11 +11,11 @@ class Connection:
         self.zone_a = zone_a
         self.zone_b = zone_b
         self.max_link_capacity = max_link_capacity
-        self.current_link_capacity = 0
+        self.current_usage = 0
 
     def has_capacity(self) -> bool:
         """Check if the connection has capacity for more drones."""
-        return self.current_link_capacity < self.max_link_capacity
+        return self.current_usage < self.max_link_capacity
 
     def other_zone(self, zone: Zone) -> Zone:
         """Get the other zone connected to this connection."""
