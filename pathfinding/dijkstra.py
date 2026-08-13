@@ -64,7 +64,7 @@ class Dijkstra:
             start: Zone,
             end: Zone,
             max_paths: int = 5
-    ):
+    ) -> list[list[Zone]]:
         """Finds multiple paths for multi-drone distribution.
         Uses repeated Djikstra with zone exclusions to find disjoint paths.
 
