@@ -4,7 +4,7 @@ MAIN   = main.py
 .PHONY: install run debug lint lint-strict clean
 
 install:
-	pip install flake8 mypy
+	pip install flake8 mypy webcolors
 
 run:
 	$(PYTHON) $(MAIN) $(MAP)
