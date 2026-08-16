@@ -4,6 +4,7 @@ from models.zone import Zone, ZoneType
 from models.connection import Connection
 from models.graph import Graph
 from pathfinding import Dijkstra
+from visualization.terminal import TerminalVisualizer
 
 
 class SimulationEngine:
@@ -28,8 +29,9 @@ class SimulationEngine:
         self.dijkstra = Dijkstra(graph)
         self.turn: int = 0
         self.log: list[str] = []
+        self.visualizer: TerminalVisualizer | None = None
 
-    def setup(self) -> None:
+    def setup(self, visual: bool = True) -> None:
         """Creates drones and assign initial paths."""
         if self.graph.start is None or self.graph.end is None:
             raise RuntimeError("Start and end zones must be defined in the graph.")
@@ -51,19 +53,30 @@ class SimulationEngine:
 
         self.graph.start.current_drones = self.graph.nb_drones
 
-    def run(self) -> int:
+        if visual:
+            self.visualizer = TerminalVisualizer(self.graph, self.drones)
+            self.visualizer.print_graph_overview()
+
+    def run(self, visual: bool = True) -> int:
         """Run the full simulation until all drones are delivered.
 
         Returns:
             The total number of turns used.
         """
-        self.setup()
+        self.setup(visual)
         while not self._all_delivered():
             self.turn += 1
             turn_output = self._run_turn()
             if turn_output:
                 self.log.append(turn_output)
 
+            if self.visualizer:
+                self.visualizer.print_turn_header(self.turn)
+                self.visualizer.print_turn_movements(turn_output)
+                self.visualizer.print_zone_states()
+
+        if self.visualizer:
+            self.visualizer.print_summary(self.turn)
         return self.turn
 
     def _all_delivered(self) -> bool:
