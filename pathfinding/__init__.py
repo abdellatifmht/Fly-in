@@ -1,1 +1,1 @@
-from .dijkstra import dijkstra
+from .dijkstra import Dijkstra
