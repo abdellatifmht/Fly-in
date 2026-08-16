@@ -1,4 +1,5 @@
 import re
+from webcolors import name_to_hex
 from typing import Optional
 from models.zone import Zone, ZoneType
 from models.graph import Graph
@@ -11,6 +12,9 @@ class ParserError(Exception):
 
 
 class MapParser:
+    VALID_META_DATA = {"zone", "color", "max_drones"}
+    VALID_CONNECTION_META_DATA = {"max_link_capacity"}
+
     def parse(self, filepath: str) -> Graph:
         """Parse the map file and return a Graph object."""
         graph = Graph()
@@ -24,6 +28,8 @@ class MapParser:
 
         first_instruction_found = False
 
+        if not lines or all(line.strip() == "" for line in lines):
+            raise ParserError("The map file is empty.")
         for index, line in enumerate(lines, start=1):
             line = line.strip()
             if not line or line.startswith("#"):
@@ -34,6 +40,10 @@ class MapParser:
                     first_instruction_found = True
                 else:
                     raise ParserError(f"Line {index}: The first instruction must be 'nb_drones'.")
+            if line.startswith("start_hub") and graph.start is not None:
+                raise ParserError(f"Line {index}: Multiple start hubs defined. Only one start hub is allowed.")
+            if line.startswith("end_hub") and graph.end is not None:
+                raise ParserError(f"Line {index}: Multiple end hubs defined. Only one end hub is allowed.")
             try:
                 self._parse_line(line, index, graph, seen_connections)
             except ParserError as e:
@@ -89,6 +99,8 @@ class MapParser:
             raise ParserError(f"Line {line_number}: Invalid zone format. Expected 'hub: <name> <x> <y> [<metadata>]'.")
         name, x, y = match.group(1), int(match.group(2)), int(match.group(3))
         metadata = match.group(4) or ""
+        if metadata == "[]":
+            raise ParserError(f"Line {line_number}: Metadata cannot be empty.")
 
         if "-" in name:
             raise ParserError(f"Line {line_number}: Zone name cannot contain '-' character.")
@@ -105,24 +117,38 @@ class MapParser:
         """Parse the metadata for a zone."""
         zone_type = ZoneType.NORMAL
         color = None
+        seen_items = set()
         max_drones = 1
 
-        for item in metadata.split():
-            if item.startswith("zone="):
-                value = item.split("=")[1]
+        for token in metadata.split():
+            if token.count("=") != 1:
+                raise ParserError(f"Line {line_number}: Invalid metadata format '{token}'. Expected format: 'key=value'.")
+
+            item, value = token.split("=")
+
+            if item not in self.VALID_META_DATA:
+                raise ParserError(f"Line {line_number}: Invalid metadata item '{item}'. Valid items are: {', '.join(self.VALID_META_DATA)}.")
+            if item in seen_items:
+                raise ParserError(f"Line {line_number}: Duplicate metadata item '{item}'. Each item can only be specified once.")
+            seen_items.add(item)
+            if item == "zone":
+                value = value.lower()
                 try:
                     zone_type = ZoneType(value)
                 except ValueError:
-                    raise ParserError(f"Line {line_number}: Invalid zone type '{value}'. Must be one of {[z.value for z in ZoneType]}.")
-            elif item.startswith("color="):
-                color = item.split("=")[1]
-            elif item.startswith("max_drones="):
+                    raise ParserError(f"Line {line_number}: Invalid zone type '{value}'. Valid types are: {', '.join([z.value for z in ZoneType])}.")
+            elif item == "color":
                 try:
-                    max_drones = int(item.split("=")[1])
+                    color = name_to_hex(value)
+                except ValueError:
+                    raise ParserError(f"Line {line_number}: Invalid color name '{value}'. Please provide a valid CSS3 color name.")
+            elif item == "max_drones":
+                try:
+                    max_drones = int(value)
                     if max_drones < 1:
                         raise ValueError
                 except ValueError:
-                    raise ParserError(f"Line {line_number}: Invalid max_drones value. Must be a positive integer.")
+                    raise ParserError(f"Line {line_number}: Invalid max_drones value '{value}'. Must be a positive integer.")
         return zone_type, color, max_drones
 
     def _parse_connection(
@@ -133,12 +159,16 @@ class MapParser:
             seen_connections: set[frozenset[str]]
             ) -> None:
         """Parse a connection line and update the graph."""
+        seen_items = set()
         match = re.match(r"connection:\s+(\S+)-(\S+)(?:\s+\[([^\]]*)\])?", line)
         if not match:
             raise ParserError(f"Line {line_number}: Invalid connection format. Expected 'connection: <zone_a>-<zone_b> [<metadata>]'")
         zone_a_name, zone_b_name = match.group(1), match.group(2)
+        if zone_a_name == zone_b_name:
+            raise ParserError(f"Line {line_number}: Connection cannot be made between the same zone '{zone_a_name}'.")
         metadata = match.group(3) or ""
-
+        if metadata == "[]":
+            raise ParserError(f"Line {line_number}: Metadata cannot be empty.")
         if zone_a_name not in graph.zones:
             raise ParserError(f"Line {line_number}: Zone '{zone_a_name}' is not defined.")
         if zone_b_name not in graph.zones:
@@ -150,14 +180,25 @@ class MapParser:
         seen_connections.add(connection_key)
 
         max_link_capacity = 1
-        for item in metadata.split():
-            if item.startswith("max_link_capacity="):
+        for token in metadata.split():
+            if token.count("=") != 1:
+                raise ParserError(f"Line {line_number}: Invalid metadata format '{token}'. Expected format: 'key=value'.")
+            item, value = token.split("=")
+            if item not in self.VALID_CONNECTION_META_DATA:
+                raise ParserError(f"Line {line_number}: Invalid connection metadata item '{item}'. Valid items are: {', '.join(self.VALID_CONNECTION_META_DATA)}.")
+            if item in seen_items:
+                raise ParserError(f"Line {line_number}: Duplicate connection metadata item '{item}'. Each item can only be specified once.")
+            seen_items.add(item)
+
+            if token.startswith("max_link_capacity="):
                 try:
-                    max_link_capacity = int(item.split("=")[1])
+                    max_link_capacity = int(token.split("=")[1])
                     if max_link_capacity < 1:
                         raise ValueError
                 except ValueError:
                     raise ParserError(f"Line {line_number}: Invalid max_link_capacity value. Must be a positive integer.")
+            else:
+                raise ParserError(f"Line {line_number}: Unknown connection metadata item '{item}'.")
 
         connection = Connection(graph.zones[zone_a_name], graph.zones[zone_b_name], max_link_capacity)
         graph.add_connection(connection)
