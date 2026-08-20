@@ -1,9 +1,15 @@
 import re
-from webcolors import name_to_hex
+import sys
 from typing import Optional
 from models.zone import Zone, ZoneType
 from models.graph import Graph
 from models.connection import Connection
+
+try:
+    from webcolors import name_to_hex
+except (ImportError, ModuleNotFoundError):
+    print("moduele webcolors not installed!")
+    sys.exit(1)
 
 
 class ParserError(Exception):
@@ -93,15 +99,15 @@ class MapParser:
             is_start: bool = False,
             is_end: bool = False
             ) -> None:
-        pattern = r"(?:start_hub|end_hub|hub):\s+(\S+)\s+(-?\d+)\s+(-?\d+)(?:\s+\[([^\]]*)\])?"
+        pattern = r"(?:start_hub|end_hub|hub):\s+(\S+)\s+(-?\d+)\s+(-?\d+)(?:\s+\[([^\]]*)\])?\s*$"
         match = re.match(pattern, line)
         if not match:
             raise ParserError(f"Line {line_number}: Invalid zone format. Expected 'hub: <name> <x> <y> [<metadata>]'.")
         name, x, y = match.group(1), int(match.group(2)), int(match.group(3))
-        metadata = match.group(4) or ""
-        if metadata == "[]":
+        metadata = match.group(4)
+        if metadata is not None and not metadata.strip():
             raise ParserError(f"Line {line_number}: Metadata cannot be empty.")
-
+        metadata = metadata or ""
         if "-" in name:
             raise ParserError(f"Line {line_number}: Zone name cannot contain '-' character.")
 
