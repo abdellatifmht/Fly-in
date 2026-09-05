@@ -9,7 +9,12 @@ class Dijkstra:
     Attributes:
         graph: The zone graph to search in.
     """
-    def __init__(self, graph: Graph):
+    def __init__(self, graph: Graph) -> None:
+        """Initialize the Dijkstra instance.
+
+        Args:
+            graph: The zone graph to search in.
+        """
         self.graph = graph
 
     def find_path(
@@ -17,14 +22,16 @@ class Dijkstra:
             start: Zone,
             end: Zone,
     ) -> Optional[list[Zone]]:
-        """Finds the shortest path from start to end using Dijkstra's algorithm.
+        """Finds the shortest path from start to end using
+            Dijkstra's algorithm.
 
         Args:
             start: The starting zone.
             end: The destination zone.
 
         Returns:
-            A list of zones representing the shortest path from start to end, or None if no path exists.
+            A list of zones representing the shortest path from start to end,
+                or None if no path exists.
         """
         heap: list[tuple[int, int, str]] = []
         heapq.heappush(heap, (0, 1, start.name))
@@ -74,7 +81,8 @@ class Dijkstra:
             max_paths: The maximum number of paths to find.
 
         Returns:
-            A list of lists, where each inner list represents a path from start to end.
+            A list of lists, where each inner list represents
+                a path from start to end.
         """
         paths: list[list[Zone]] = []
         excluded: set[str] = set()
@@ -124,7 +132,8 @@ class Dijkstra:
             current_zone = self.graph.zones[current_name]
 
             for neighbor, connection in self.graph.get_neighbors(current_zone):
-                if neighbor.zone_type == ZoneType.BLOCKED or neighbor.name in excluded:
+                if (neighbor.zone_type == ZoneType.BLOCKED or
+                        neighbor.name in excluded):
                     continue
 
                 move_cost = neighbor.movement_cost()

@@ -15,7 +15,6 @@ class SimulationEngine:
         drones:  All drones participating in the simulation.
         dijkstra: Pathfinder instance.
         turn:    Current simulation turn number.
-        log:     List of output lines (one per turn).
     """
 
     def __init__(self, graph: Graph) -> None:
@@ -28,13 +27,14 @@ class SimulationEngine:
         self.drones: list[Drone] = []
         self.dijkstra = Dijkstra(graph)
         self.turn: int = 0
-        self.log: list[str] = []
-        self.visualizer: TerminalVisualizer | None = None
+        self.visualizer: TerminalVisualizer
 
-    def setup(self, visual: bool = True) -> None:
+    def setup(self) -> None:
         """Creates drones and assign initial paths."""
         if self.graph.start is None or self.graph.end is None:
-            raise RuntimeError("Start and end zones must be defined in the graph.")
+            raise RuntimeError(
+                "Start and end zones must be defined in the graph."
+                )
 
         paths = self.dijkstra.find_all_paths(
             self.graph.start,
@@ -53,31 +53,24 @@ class SimulationEngine:
 
         self.graph.start.current_drones = self.graph.nb_drones
 
-        if visual:
-            self.visualizer = TerminalVisualizer(self.graph, self.drones)
-            self.visualizer.print_graph_overview()
+        self.visualizer = TerminalVisualizer(self.graph, self.drones)
+        self.visualizer.print_graph_overview()
 
-    def run(self, visual: bool = True) -> int:
+    def run(self) -> None:
         """Run the full simulation until all drones are delivered.
 
         Returns:
             The total number of turns used.
         """
-        self.setup(visual)
+        self.setup()
         while not self._all_delivered():
             self.turn += 1
             turn_output = self._run_turn()
-            if turn_output:
-                self.log.append(turn_output)
 
-            if self.visualizer:
-                self.visualizer.print_turn_header(self.turn)
-                self.visualizer.print_turn_movements(turn_output)
-                self.visualizer.print_zone_states()
+            self.visualizer.print_turn_header(self.turn)
+            self.visualizer.print_turn_movements(turn_output)
 
-        if self.visualizer:
-            self.visualizer.print_summary(self.turn)
-        return self.turn
+        self.visualizer.print_summary(self.turn)
 
     def _all_delivered(self) -> bool:
         """Check if all drones have completed their deliveries.
@@ -93,7 +86,10 @@ class SimulationEngine:
         Returns:
             A string representing the output for the current turn.
         """
-        intentions: dict[int, Optional[tuple[str, Zone, Optional[Connection]]]] = {}
+        intentions: dict[
+            int,
+            Optional[tuple[str, Zone, Optional[Connection]]]
+            ] = {}
 
         for drone in self.drones:
             if drone.delivered:
@@ -136,13 +132,13 @@ class SimulationEngine:
                 movements.append(f"{drone.label}-{conn_name}")
 
             elif action_type == "move":
-                self._free_zone(drone.current_zone, drone)
+                self._free_zone(drone.current_zone)
                 if conn:
                     conn.current_usage += 1
                 drone.move_to(target_zone)
                 if conn:
                     conn.current_usage -= 1
-                self._occupy_zone(target_zone, drone)
+                self._occupy_zone(target_zone)
                 movements.append(f"{drone.label}-{target_zone.name}")
 
                 if target_zone == self.graph.end:
@@ -159,7 +155,8 @@ class SimulationEngine:
             drone: The drone to decide for.
 
         Returns:
-            A tuple of (action_type, target_zone, connection) or None if no action.
+            A tuple of (action_type, target_zone, connection) or
+                None if no action.
         """
 
         if drone.is_in_flight():
@@ -201,7 +198,9 @@ class SimulationEngine:
 
     def _resolve_conflicts(
             self,
-            intentions: dict[int, Optional[tuple[str, Zone, Optional[Connection]]]]
+            intentions: dict[
+                int, Optional[tuple[str, Zone, Optional[Connection]]]
+                ]
     ) -> dict[int, Optional[tuple[str, Zone, Optional[Connection]]]]:
         """Validate intentions against capacity constraints.
 
@@ -230,7 +229,8 @@ class SimulationEngine:
                 dest = action[1]
                 validated[drone.drone_id] = action
                 zone_incoming[dest.name] = zone_incoming.get(dest.name, 0) + 1
-                zone_outgoing[drone.current_zone.name] = zone_outgoing.get(drone.current_zone.name, 0) + 1
+                zone_outgoing[drone.current_zone.name] = zone_outgoing.get(
+                    drone.current_zone.name, 0) + 1
 
         for drone in self.drones:
             if drone.delivered or drone.drone_id in validated:
@@ -276,28 +276,20 @@ class SimulationEngine:
 
         return validated
 
-    def _occupy_zone(self, zone: Zone, drone: Drone) -> None:
+    def _occupy_zone(self, zone: Zone) -> None:
         """Increment occupancy counter for a zone.
 
         Args:
             zone:  Zone being entered.
-            drone: Drone entering it (unused but useful for future logging).
         """
         if not zone.is_start and not zone.is_end:
             zone.current_drones += 1
 
-    def _free_zone(self, zone: Zone, drone: Drone) -> None:
+    def _free_zone(self, zone: Zone) -> None:
         """Decrement occupancy counter for a zone.
 
         Args:
             zone:  Zone being exited.
-            drone: Drone exiting it (unused but useful for future logging).
         """
         if not zone.is_start and not zone.is_end:
             zone.current_drones = max(0, zone.current_drones - 1)
-
-    # def print_log(self) -> None:
-    #     """Print the simulation log."""
-    #     for line in self.log:
-    #         print(line)
-    #     print(f"\nTotal turns: {self.turn}")

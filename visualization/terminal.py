@@ -1,194 +1,170 @@
+import sys
 from models.graph import Graph
 from models.drone import Drone
-from models.zone import Zone
 
-ANSI: dict[str, str] = {
-    "reset":   "\033[0m",
-    "bold":    "\033[1m",
-    "black":   "\033[30m",
-    "red":     "\033[31m",
-    "green":   "\033[32m",
-    "yellow":  "\033[33m",
-    "blue":    "\033[34m",
-    "magenta": "\033[35m",
-    "cyan":    "\033[36m",
-    "white":   "\033[37m",
-    "bg_black":   "\033[40m",
-    "bg_red":     "\033[41m",
-    "bg_green":   "\033[42m",
-    "bg_yellow":  "\033[43m",
-    "bg_blue":    "\033[44m",
-    "bg_magenta": "\033[45m",
-    "bg_cyan":    "\033[46m",
-    "bg_white":   "\033[47m",
+try:
+    from webcolors import name_to_hex
+except (ImportError, ModuleNotFoundError):
+    print("moduele webcolors not installed!")
+    sys.exit(1)
+
+RESET = "\033[0m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+
+ZONE_TYPE_HEX: dict[str, str] = {
+    "normal":     "#3498db",
+    "restricted": "#e74c3c",
+    "priority":   "#2ecc71",
+    "blocked":    "#7f8c8d",
 }
 
-ZONE_TYPE_COLOR: dict[str, str] = {
-    "normal": ANSI["blue"],
-    "restricted": ANSI["red"],
-    "priority": ANSI["green"],
-    "blocked": ANSI["black"],
-}
+
+def hex_to_ansi(hex_c: str) -> str:
+    """Convert hex color (#rrggbb) to ANSI 24-bit foreground code."""
+    h = hex_c.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"\033[38;2;{r};{g};{b}m"
 
 
 class TerminalVisualizer:
-    """
-    Renders the graph, drones, and zones in the terminal using ANSI escape codes for colors.
+    """Renders the simulation using ANSI escape codes.
+
+    Attributes:
+        graph:  The zone graph.
+        drones: All drones in the simulation.
     """
 
     def __init__(self, graph: Graph, drones: list[Drone]) -> None:
         self.graph = graph
         self.drones = drones
 
-    def print_turn_header(self, turn: int) -> None:
-        """
-        Prints the header for the current turn in the simulation.
+    def _resolve_ansi(self, color: str | None, fallback: str) -> str:
+        """Resolve a color string to an ANSI escape code.
 
         Args:
-            turn (int): The current turn number.
-        """
-        print(
-            f"\n{ANSI['bold']}{ANSI['cyan']}"
-            f"{'=' * 40}"
-            f"\n  TURN {turn}"
-            f"\n{'=' * 40}"
-            f"{ANSI['reset']}"
-        )
+            color:    Hex string or CSS3 name, or None.
+            fallback: Hex fallback if color is None or invalid.
 
-    def print_turn_movements(self, movements: str) -> None:
+        Returns:
+            ANSI foreground escape code.
         """
-        Prints the movements of drones for the current turn.
+        if not color:
+            return hex_to_ansi(fallback)
+        hex_c = color if color.startswith("#") else ""
+        if not hex_c:
+            try:
+                hex_c = name_to_hex(color)
+            except (ValueError, AttributeError):
+                hex_c = fallback
+        return hex_to_ansi(hex_c)
+
+    def _zone_ansi(self, zone_name: str) -> str:
+        """Return ANSI color code for a zone.
 
         Args:
-            movements (str): A string describing the movements of drones.
+            zone_name: Name of the zone.
+
+        Returns:
+            ANSI escape code string.
         """
-        if not movements:
-            print(f"  {ANSI['yellow']}(no movements this turn){ANSI['reset']}")
-            return
+        zone = self.graph.zones.get(zone_name)
+        if zone is None:
+            return ""
+        fallback = ZONE_TYPE_HEX.get(zone.zone_type.value, "#ffffff")
+        return self._resolve_ansi(zone.color, fallback)
 
-        parts = []
-        for token in movements.split():
-            parts.append(self._colorize_movement(token))
-        print("  " + " ".join(parts))
-
-    def print_zone_states(self) -> None:
-        """
-        Prints the current states of all non-blocked zones in the graph.
-        """
-        print(f"\n{ANSI['bold']}  Zone States:{ANSI['reset']}")
-        for zone in self.graph.zones.values():
-            if zone.zone_type == "blocked":
-                continue
-
-            color = self._resolve_color(zone.color, zone.zone_type.value)
-
-            drones_here = [
-                d.label for d in self.drones
-                if not d.delivered
-                and not d.is_in_flight()
-                and d.current_zone == zone
-            ]
-            in_flight_here = [
-                d.label for d in self.drones
-                if not d.delivered
-                and d.is_in_flight()
-                and d.current_zone == zone
-            ]
-
-            occupancy = f"{zone.current_drones}/{zone.max_drones}"
-            drone_str = ""
-            if drones_here:
-                drone_str += f" {ANSI['green']}(-> {', '.join(in_flight_here)}){ANSI['reset']}"
-            tag = ""
-            if zone.is_start:
-                tag = f"{ANSI['bg_green']}{ANSI['black']} START {ANSI['reset']}"
-            elif zone.is_end:
-                tag = f"{ANSI['bg_yellow']}{ANSI['black']} END {ANSI['reset']}"
-
-            print(
-                f"    {color}{ANSI['bold']}{zone.name:<16}{ANSI['reset']}"
-                f"{color}[{zone.zone_type.value:<10}]{ANSI['reset']}"
-                f"  cap: {occupancy}"
-                f"{drone_str}{tag}"
-            )
-
-    def print_summary(self, total_turns: int) -> None:
-        """
-        Prints a summary of the simulation after all turns have been completed.
+    def _colored_zone_name(self, zone_name: str) -> str:
+        """Return colored zone name string.
 
         Args:
-            total_turns (int): The total number of turns taken in the simulation.
+            zone_name: Name of the zone.
+
+        Returns:
+            ANSI-colored zone name followed by reset.
         """
-        nb = len(self.drones)
-        avg = total_turns / nb if nb > 0 else 0
-        delivered = sum(1 for d in self.drones if d.delivered)
-
-        print(
-            f"\n{ANSI['bold']}{ANSI['green']}"
-            f"{'=' * 40}"
-            f"\n  SIMULATION COMPLETE"
-            f"\n{'=' * 40}"
-            f"{ANSI['reset']}"
-        )
-
-        print(f"  {ANSI['bold']}Total turns   :{ANSI['reset']} {total_turns}")
-        print(f"  {ANSI['bold']}Drones        :{ANSI['reset']} {nb}")
-        print(f"  {ANSI['bold']}Delivered     :{ANSI['reset']} {delivered}/{nb}")
-        print(f"  {ANSI['bold']}Avg turns/drone:{ANSI['reset']} {avg:.1f}")
+        return f"{self._zone_ansi(zone_name)}{zone_name}{RESET}"
 
     def print_graph_overview(self) -> None:
-        """
-        Prints an overview of the graph, including all zones and their types.
-        """
-        nb_zones = len(self.graph.zones)
-        nb_conn = sum(
-            len(v) for v in self.graph.adjacency.values()
-        ) // 2
-
-        print(
-            f"\n{ANSI['bold']}{ANSI['magenta']}"
-            f"  Graph: {nb_zones} zones, {nb_conn} connections, "
-            f"{self.graph.nb_drones} drones"
-            f"{ANSI['reset']}"
-        )
+        """Print a colored overview of the graph at startup."""
         start = self.graph.start
         end = self.graph.end
-        if start and end:
+        nb_zones = len(self.graph.zones)
+        nb_conn = sum(len(v) for v in self.graph.adjacency.values()) // 2
+        print(f"\n{BOLD}=== FLY-IN SIMULATION ==={RESET}")
+        print(f"  Zones: {nb_zones}  Connections: {nb_conn}  Drones: {self.graph.nb_drones}")
+        print(f"  Start : {self._colored_zone_name(start.name) if start else 'None'}")
+        print(f"  End   : {self._colored_zone_name(end.name) if end else 'None'}\n")
+
+    def print_turn_header(self, turn: int) -> None:
+        """Print a turn separator.
+
+        Args:
+            turn: Current turn number.
+        """
+        print(f"\n{BOLD}--- Turn {turn} ---{RESET}")
+
+    def print_turn_movements(self, movements: str) -> None:
+        """Print drone movements with zone colors.
+
+        Args:
+            movements: Space-separated movement string.
+        """
+        if not movements:
+            print(f"  {DIM}(no movements){RESET}")
+            return
+
+        parts: list[str] = []
+        for token in movements.split():
+            if "-" not in token:
+                parts.append(token)
+                continue
+            drone_part, dest_part = token.split("-", 1)
+            # connexion en vol (zoneA-zoneB)
+            if self.graph.zones.get(dest_part) is None and "-" in dest_part:
+                a, b = dest_part.split("-", 1)
+                dest_colored = f"{self._colored_zone_name(a)}->{self._colored_zone_name(b)}"
+            else:
+                dest_colored = self._colored_zone_name(dest_part)
+            parts.append(f"{BOLD}\033[35m{drone_part}{RESET}-{dest_colored}")
+
+        print("  " + "  ".join(parts))
+
+    def print_zone_states(self) -> None:
+        """Print occupancy state for each zone."""
+        print("")
+        for zone in self.graph.zones.values():
+            drones_here = [
+                d.label for d in self.drones
+                if not d.delivered and not d.is_in_flight()
+                and d.current_zone == zone
+            ]
+            in_flight = [
+                d.label for d in self.drones
+                if d.is_in_flight() and d.flight_destination == zone
+            ]
+            tag = " [START]" if zone.is_start else " [END]" if zone.is_end else ""
+            drone_str = f"  {' '.join(drones_here)}" if drones_here else ""
+            flight_str = f"  (→ {' '.join(in_flight)})" if in_flight else ""
+            pad = " " * max(0, 20 - len(zone.name))
             print(
-                f"  Start: {ANSI['green']}{start.name}{ANSI['reset']}  "
-                f"End: {ANSI['yellow']}{end.name}{ANSI['reset']}"
+                f"  {self._colored_zone_name(zone.name)}{pad}"
+                f"{DIM}{zone.zone_type.value:<12}{RESET}"
+                f"cap: {zone.current_drones}/{zone.max_drones}"
+                f"{drone_str}{flight_str}{tag}"
             )
+        print("")
 
-    def _colorize_movement(self, token: str) -> str:
-        """
-        Colorizes a movement token based on its type.
-
-        Args:
-            token (str): The movement token to colorize.
-
-        Returns:
-            str: The colorized movement token.
-        """
-        if "-" not in token:
-            return token
-        drone_part, dest_part = token.split("-", 1)
-        return (
-            f"{ANSI['magenta']}{ANSI['bold']}{drone_part}{ANSI['reset']}"
-            f"{ANSI['white']}-{ANSI['reset']}"
-            f"{ANSI['cyan']}{dest_part}{ANSI['reset']}"
-        )
-
-    def _resolve_color(self, color: str | None, zone_type: str) -> str:
-        """
-        Resolves the color for a zone based on its type and any custom color.
+    def print_summary(self, total_turns: int) -> None:
+        """Print final simulation summary.
 
         Args:
-            color (str | None): The custom color for the zone, if any.
-            zone_type (str): The type of the zone.
-
-        Returns:
-            str: The ANSI color code for the zone.
+            total_turns: Total number of turns used.
         """
-        if color and color in ANSI:
-            return ANSI[color]
-        return ZONE_TYPE_COLOR.get(zone_type, ANSI["white"])
+        print(f"\n{BOLD}=== SIMULATION COMPLETE ==={RESET}")
+        nb = len(self.drones)
+        delivered = sum(1 for d in self.drones if d.delivered)
+        end = self.graph.end
+        print(f"  Delivered    : {delivered}")
+        print(f"  Delivered to : {self._colored_zone_name(end.name) if end else 'goal'}")
+        print(f"  Total turns  : {total_turns}")

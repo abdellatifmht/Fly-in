@@ -20,11 +20,20 @@ class Drone:
         target_zone (Optional[Zone]): The zone the drone is moving towards.
         path (list[Zone]): The planned path for the drone to follow.
         state (DroneState): The current state of the drone.
-        flight_connection (Optional[Connection]): The connection the drone is currently using to move.
-        flight_destination (Optional[Zone]): The zone the drone is flying towards.
+        flight_connection (Optional[Connection]): The connection the drone
+            is currently using to move.
+        flight_destination (Optional[Zone]): The zone the drone
+            is flying towards.
         delivered (bool): Whether the drone has completed its delivery.
     """
-    def __init__(self, drone_id: int, start_zone: "Zone") -> None:
+    def __init__(self, drone_id: int, start_zone: Zone) -> None:
+        """
+        Initialize a Drone instance.
+
+        Args:
+            drone_id (int): Unique identifier for the drone.
+            start_zone (Zone): The initial zone where the drone starts.
+        """
         self.drone_id: int = drone_id
         self.current_zone: "Zone" = start_zone
         self.target_zone: Optional["Zone"] = None
@@ -36,7 +45,11 @@ class Drone:
 
     @property
     def label(self) -> str:
-        """Return the label of the drone (e.g., D1, D2)."""
+        """Return the label of the drone (e.g., D1, D2).
+
+        Returns:
+            str: The label of the drone.
+        """
         return f"D{self.drone_id}"
 
     def assign_path(self, path: list["Zone"]) -> None:
@@ -48,7 +61,11 @@ class Drone:
         self.target_zone = self.path[-1] if self.path else None
 
     def next_zone(self) -> Optional["Zone"]:
-        """Return the next zone in the path, if available."""
+        """Return the next zone in the path, if available.
+        Returns:
+            Optional[Zone]: The next zone in the path,
+                or None if the path is empty.
+        """
         return self.path[0] if self.path else None
 
     def advance(self) -> None:
@@ -80,7 +97,7 @@ class Drone:
         self.flight_destination = None
         self.advance()
 
-    def move_to(self, zone: "Zone") -> None:
+    def move_to(self, zone: Zone) -> None:
         """Perform an immediate 1-turn move to the specified zone.
 
         Args:
@@ -104,6 +121,11 @@ class Drone:
         return len(self.path) > 0
 
     def __repr__(self) -> str:
+        """Return a string representation of the Drone instance.
+
+        Returns:
+            str: A string representation of the Drone instance.
+        """
         zone_name = self.current_zone.name if self.current_zone else "None"
         if self.is_in_flight() and self.flight_destination:
             return (

@@ -1,7 +1,6 @@
 import sys
 from parser.map_parser import MapParser, ParserError
 from simulation.engine import SimulationEngine
-from simulation.output import SimulationOutput
 
 
 def main() -> None:
@@ -19,10 +18,7 @@ def main() -> None:
         sys.exit(1)
 
     engine = SimulationEngine(graph)
-    total_turns = engine.run()
-
-    # output = SimulationOutput(total_turns, graph.nb_drones)
-    # output.print_summary(engine.log)
+    engine.run()
 
 
 if __name__ == "__main__":
