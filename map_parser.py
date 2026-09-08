@@ -1,9 +1,9 @@
 import re
 import sys
 from typing import Optional
-from models.zone import Zone, ZoneType
-from models.graph import Graph
-from models.connection import Connection
+from zone import Zone, ZoneType
+from graph import Graph
+from connection import Connection
 
 try:
     from webcolors import name_to_hex
@@ -73,7 +73,12 @@ class MapParser:
                     f"Multiple end hubs defined."
                 )
             try:
-                self._parse_line(line, graph, seen_connections, seen_coordinates)
+                self._parse_line(
+                    line,
+                    graph,
+                    seen_connections,
+                    seen_coordinates
+                    )
             except ParserError as e:
                 raise ParserError(e)
             except Exception as e:

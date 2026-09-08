@@ -1,7 +1,7 @@
-from models.connection import Connection
+from connection import Connection
 from typing import Optional
 from enum import Enum
-from models.zone import Zone
+from zone import Zone
 
 
 class DroneState(str, Enum):

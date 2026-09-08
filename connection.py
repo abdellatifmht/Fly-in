@@ -1,4 +1,4 @@
-from models.zone import Zone
+from zone import Zone
 
 
 class Connection:

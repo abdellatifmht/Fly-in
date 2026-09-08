@@ -1,10 +1,10 @@
 from typing import Optional
-from models.drone import Drone
-from models.zone import Zone, ZoneType
-from models.connection import Connection
-from models.graph import Graph
-from pathfinding import Dijkstra
-from visualization.terminal import TerminalVisualizer
+from drone import Drone
+from zone import Zone, ZoneType
+from connection import Connection
+from graph import Graph
+from dijkstra import Dijkstra
+from terminal import TerminalVisualizer
 
 
 class SimulationEngine:
@@ -112,17 +112,23 @@ class SimulationEngine:
             action_type, target_zone, conn = action
 
             if action_type == "flight_complete":
-                self._free_zone(drone.current_zone, drone)
+                if conn is None:
+                    raise RuntimeError(
+                        "Flight complete action requires a connection."
+                        )
+                self._free_zone(drone.current_zone)
                 drone.complete_flight()
-                self._occupy_zone(target_zone, drone)
-                if conn:
-                    conn.current_usage -= 1
+                self._occupy_zone(target_zone)
+                conn.current_usage -= 1
                 movements.append(f"{drone.label}-{target_zone.name}")
 
             elif action_type == "flight_start":
-                self._free_zone(drone.current_zone, drone)
-                if conn:
-                    conn.current_usage += 1
+                self._free_zone(drone.current_zone)
+                if conn is None:
+                    raise RuntimeError(
+                        "Flight start action requires a connection."
+                        )
+                conn.current_usage += 1
                 drone.start_flight(conn, target_zone)
                 conn_name = (
                     f"{conn.zone_a.name}-{conn.zone_b.name}"
@@ -241,7 +247,7 @@ class SimulationEngine:
                 validated[drone.drone_id] = None
                 continue
 
-            act_type, dest, conn = action
+            _, dest, conn = action
 
             current_in_dest = dest.current_drones
             outgoing_from_dest = zone_outgoing.get(dest.name, 0)

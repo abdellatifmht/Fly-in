@@ -21,10 +21,6 @@ lint:
 		--disallow-untyped-defs \
 		--check-untyped-defs
 
-lint-strict:
-	flake8 .
-	mypy . --strict
-
 clean:
 	rm -rf __pycache__
 	rm -rf .mypy_cache

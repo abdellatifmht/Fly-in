@@ -1,6 +1,6 @@
 import sys
-from models.graph import Graph
-from models.drone import Drone
+from graph import Graph
+from drone import Drone
 
 try:
     from webcolors import name_to_hex
@@ -92,9 +92,15 @@ class TerminalVisualizer:
         nb_zones = len(self.graph.zones)
         nb_conn = sum(len(v) for v in self.graph.adjacency.values()) // 2
         print(f"\n{BOLD}=== FLY-IN SIMULATION ==={RESET}")
-        print(f"  Zones: {nb_zones}  Connections: {nb_conn}  Drones: {self.graph.nb_drones}")
-        print(f"  Start : {self._colored_zone_name(start.name) if start else 'None'}")
-        print(f"  End   : {self._colored_zone_name(end.name) if end else 'None'}\n")
+        print(
+            f"  Zones: {nb_zones}  Connections: {nb_conn}"
+            f"  Drones: {self.graph.nb_drones}")
+        print(
+            "  Start : "
+            f"{self._colored_zone_name(start.name) if start else 'None'}")
+        print(
+            "  End   : "
+            f"{self._colored_zone_name(end.name) if end else 'None'}\n")
 
     def print_turn_header(self, turn: int) -> None:
         """Print a turn separator.
@@ -123,7 +129,10 @@ class TerminalVisualizer:
             # connexion en vol (zoneA-zoneB)
             if self.graph.zones.get(dest_part) is None and "-" in dest_part:
                 a, b = dest_part.split("-", 1)
-                dest_colored = f"{self._colored_zone_name(a)}->{self._colored_zone_name(b)}"
+                dest_colored = (
+                    f"{self._colored_zone_name(a)}"
+                    f"->{self._colored_zone_name(b)}"
+                )
             else:
                 dest_colored = self._colored_zone_name(dest_part)
             parts.append(f"{BOLD}\033[35m{drone_part}{RESET}-{dest_colored}")
@@ -143,7 +152,10 @@ class TerminalVisualizer:
                 d.label for d in self.drones
                 if d.is_in_flight() and d.flight_destination == zone
             ]
-            tag = " [START]" if zone.is_start else " [END]" if zone.is_end else ""
+            tag = (
+                " [START]" if zone.is_start
+                else " [END]" if zone.is_end else ""
+                )
             drone_str = f"  {' '.join(drones_here)}" if drones_here else ""
             flight_str = f"  (→ {' '.join(in_flight)})" if in_flight else ""
             pad = " " * max(0, 20 - len(zone.name))
@@ -162,9 +174,11 @@ class TerminalVisualizer:
             total_turns: Total number of turns used.
         """
         print(f"\n{BOLD}=== SIMULATION COMPLETE ==={RESET}")
-        nb = len(self.drones)
         delivered = sum(1 for d in self.drones if d.delivered)
         end = self.graph.end
         print(f"  Delivered    : {delivered}")
-        print(f"  Delivered to : {self._colored_zone_name(end.name) if end else 'goal'}")
+        print(
+            "  Delivered to : "
+            f"{self._colored_zone_name(end.name) if end else 'goal'}"
+            )
         print(f"  Total turns  : {total_turns}")

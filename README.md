@@ -1,4 +1,4 @@
-*This project has been created as part of the 42 curriculum by <login>.*
+*This project has been created as part of the 42 curriculum by abmahama.*
 
 ## Description
 
@@ -78,7 +78,4 @@ Colors follow zone metadata from the map file, with fallback to zone type defaul
 - [mypy documentation](https://mypy.readthedocs.io/)
 
 ### AI usage
-Claude was used to help scaffold the initial class structure and identify
-bugs in the conflict resolution logic. All code was reviewed, understood,
-and adapted manually. The algorithm design and simulation logic were
-developed and validated independently.
+AI was used to help understand the algorithm and simulation logic.

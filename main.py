@@ -1,6 +1,6 @@
 import sys
-from parser.map_parser import MapParser, ParserError
-from simulation.engine import SimulationEngine
+from map_parser import MapParser, ParserError
+from engine import SimulationEngine
 
 
 def main() -> None:

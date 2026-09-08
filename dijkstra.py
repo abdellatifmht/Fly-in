@@ -1,6 +1,7 @@
 import heapq
 from typing import Optional
-from models import Zone, ZoneType, Graph
+from zone import Zone, ZoneType
+from graph import Graph
 
 
 class Dijkstra:
@@ -131,7 +132,7 @@ class Dijkstra:
 
             current_zone = self.graph.zones[current_name]
 
-            for neighbor, connection in self.graph.get_neighbors(current_zone):
+            for neighbor, _ in self.graph.get_neighbors(current_zone):
                 if (neighbor.zone_type == ZoneType.BLOCKED or
                         neighbor.name in excluded):
                     continue
